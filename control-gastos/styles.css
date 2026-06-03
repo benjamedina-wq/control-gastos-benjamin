@@ -207,29 +207,75 @@ textarea {
 
 .tabs {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   margin: 0 0 16px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  padding: 2px 2px 8px;
 }
 
 .tab-button {
+  --tab-color: var(--brand);
   min-height: 40px;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--tab-color) 32%, #ffffff);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--ink);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.72)),
+    color-mix(in srgb, var(--tab-color) 16%, #ffffff);
+  color: color-mix(in srgb, var(--tab-color) 76%, #14213d);
   cursor: pointer;
   font-weight: 700;
   padding: 0 14px;
   white-space: nowrap;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--tab-color) 14%, transparent);
+}
+
+.tab-button::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 7px;
+  border-radius: 999px;
+  background: var(--tab-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tab-color) 18%, transparent);
+}
+
+.tab-button[data-tab="movements"] {
+  --tab-color: #0877e8;
+}
+
+.tab-button[data-tab="budgets"] {
+  --tab-color: #70bf2b;
+}
+
+.tab-button[data-tab="debts"] {
+  --tab-color: #ef5753;
+}
+
+.tab-button[data-tab="cards"] {
+  --tab-color: #8056d8;
+}
+
+.tab-button[data-tab="annual"] {
+  --tab-color: #f5b642;
+}
+
+.tab-button[data-tab="data"] {
+  --tab-color: #12a69a;
 }
 
 .tab-button.active {
-  border-color: var(--brand);
-  background: linear-gradient(135deg, var(--brand) 0%, #0877e8 100%);
+  border-color: var(--tab-color);
+  background:
+    linear-gradient(135deg, var(--tab-color) 0%, color-mix(in srgb, var(--tab-color) 72%, #0b4bb3) 100%);
   color: #fff;
-  box-shadow: 0 10px 22px rgba(11, 75, 179, 0.2);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--tab-color) 34%, transparent);
+  transform: translateY(-1px);
+}
+
+.tab-button.active::before {
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.18);
 }
 
 .tab-panel {

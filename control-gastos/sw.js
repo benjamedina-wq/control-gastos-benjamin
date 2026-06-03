@@ -1,4 +1,4 @@
-const CACHE_NAME = "control-gastos-v34";
+const CACHE_NAME = "control-gastos-v35";
 const APP_SHELL = [
   "./",
   "./index.html",
