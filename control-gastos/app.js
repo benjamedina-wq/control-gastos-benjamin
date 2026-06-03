@@ -167,8 +167,8 @@ elements.monthFilter.value = state.month;
 elements.dateInput.value = todayKey();
 elements.onlineUrlInput.value = state.onlineConfig.url || DEFAULT_SUPABASE_URL;
 elements.onlineKeyInput.value = state.onlineConfig.key || DEFAULT_SUPABASE_KEY;
-elements.onlineEmailInput.value = state.onlineSession.user?.email || "";
-elements.authEmailInput.value = state.onlineSession.user?.email || "";
+elements.onlineEmailInput.value = state.onlineSession?.user?.email || "";
+elements.authEmailInput.value = state.onlineSession?.user?.email || "";
 renderAuthGate();
 renderOnlineUserStatus();
 startOnlinePolling();
@@ -1586,6 +1586,14 @@ function authEndpoint(config, path) {
   return `${config.url}/auth/v1/${path}`;
 }
 
+function authHeaders(config) {
+  return {
+    apikey: config.key,
+    Authorization: `Bearer ${config.key}`,
+    "Content-Type": "application/json",
+  };
+}
+
 function readOnlineCredentials() {
   const authEmail = elements.authEmailInput.value.trim();
   const authPassword = elements.authPasswordInput.value;
@@ -1636,10 +1644,7 @@ async function registerOnlineUser() {
   try {
     const response = await fetch(authEndpoint(config, "signup"), {
       method: "POST",
-      headers: {
-        apikey: config.key,
-        "Content-Type": "application/json",
-      },
+      headers: authHeaders(config),
       body: JSON.stringify(credentials),
     });
     const data = await response.json();
@@ -1655,8 +1660,9 @@ async function registerOnlineUser() {
     }
   } catch (error) {
     console.error(error);
-    setAuthStatus("No pude crear la cuenta. Revisa correo o contrasena.");
-    setOnlineStatus("No pude registrar el usuario. Revisa correo, clave o configuracion de Supabase.");
+    const message = error.message || "Revisa correo, contrasena o configuracion de Supabase.";
+    setAuthStatus(`No pude crear la cuenta: ${message}`);
+    setOnlineStatus(`No pude registrar el usuario: ${message}`);
   }
 }
 
@@ -1674,10 +1680,7 @@ async function loginOnlineUser() {
   try {
     const response = await fetch(authEndpoint(config, "token?grant_type=password"), {
       method: "POST",
-      headers: {
-        apikey: config.key,
-        "Content-Type": "application/json",
-      },
+      headers: authHeaders(config),
       body: JSON.stringify(credentials),
     });
     const data = await response.json();
@@ -1688,8 +1691,9 @@ async function loginOnlineUser() {
     setOnlineStatus("Usuario conectado. Sincronizacion automatica activa.", "success");
   } catch (error) {
     console.error(error);
-    setAuthStatus("No pude entrar. Revisa correo, contrasena o confirmacion de correo.");
-    setOnlineStatus("No pude entrar. Revisa correo, contrasena o confirmacion de correo.");
+    const message = error.message || "Revisa correo, contrasena o confirmacion de correo.";
+    setAuthStatus(`No pude entrar: ${message}`);
+    setOnlineStatus(`No pude entrar: ${message}`);
   }
 }
 
