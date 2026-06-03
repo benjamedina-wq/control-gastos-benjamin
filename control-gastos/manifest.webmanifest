@@ -1,0 +1,20 @@
+{
+  "name": "Control de gastos e ingresos",
+  "short_name": "Finanzas",
+  "description": "Control simple de gastos, ingresos y facturas personales.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff5f5",
+  "theme_color": "#d71920",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

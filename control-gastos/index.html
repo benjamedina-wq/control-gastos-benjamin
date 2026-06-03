@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#d71920" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Finanzas" />
+    <title>Control de gastos e ingresos</title>
+    <link rel="manifest" href="manifest.webmanifest?v=26" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon.svg" />
+    <link rel="stylesheet" href="styles.css?v=26" />
+  </head>
+  <body>
+    <section id="lockScreen" class="lock-screen hidden" aria-label="Bloqueo">
+      <div class="lock-panel">
+        <h1>Finanzas</h1>
+        <label>
+          PIN
+          <input id="unlockPinInput" type="password" inputmode="numeric" autocomplete="current-password" />
+        </label>
+        <button class="primary-button" type="button" id="unlockButton">Entrar</button>
+        <div id="lockStatus" class="form-status" role="status"></div>
+      </div>
+    </section>
+
+    <main class="app-shell">
+      <section class="topbar" aria-label="Resumen principal">
+        <div>
+          <p class="eyebrow">Control personal</p>
+          <h1>Gastos e ingresos</h1>
+        </div>
+        <div class="month-picker">
+          <label for="monthFilter">Mes</label>
+          <input id="monthFilter" type="month" />
+        </div>
+      </section>
+
+      <section class="summary-grid" aria-label="Indicadores">
+        <article class="metric">
+          <span>Balance del mes</span>
+          <strong id="balanceTotal">$0</strong>
+        </article>
+        <article class="metric">
+          <span>Ingresos</span>
+          <strong id="incomeTotal">$0</strong>
+        </article>
+        <article class="metric">
+          <span>Gastos</span>
+          <strong id="expenseTotal">$0</strong>
+        </article>
+        <article class="metric">
+          <span>Movimientos</span>
+          <strong id="expenseCount">0</strong>
+        </article>
+      </section>
+
+      <section class="summary-grid compact-summary" aria-label="Indicadores avanzados">
+        <article class="metric">
+          <span>Ahorro</span>
+          <strong id="savingRate">0%</strong>
+        </article>
+        <article class="metric">
+          <span>Vs mes anterior</span>
+          <strong id="monthCompare">-</strong>
+        </article>
+        <article class="metric">
+          <span>Mayor gasto</span>
+          <strong id="largestExpense">$0</strong>
+        </article>
+        <article class="metric">
+          <span>Pago mas usado</span>
+          <strong id="topPayment">-</strong>
+        </article>
+      </section>
+
+      <nav class="tabs" aria-label="Secciones">
+        <button class="tab-button active" type="button" data-tab="movements">Movimientos</button>
+        <button class="tab-button" type="button" data-tab="budgets">Presupuestos</button>
+        <button class="tab-button" type="button" data-tab="debts">Deudas</button>
+        <button class="tab-button" type="button" data-tab="cards">Tarjetas</button>
+        <button class="tab-button" type="button" data-tab="annual">Anual</button>
+        <button class="tab-button" type="button" data-tab="data">Datos</button>
+      </nav>
+
+      <section class="tab-panel active" data-panel="movements">
+        <section class="workspace">
+          <form id="expenseForm" class="panel form-panel">
+            <div class="panel-heading">
+              <h2>Nuevo movimiento</h2>
+              <button class="icon-button" type="button" id="seedButton" title="Cargar ejemplos" aria-label="Cargar ejemplos">
+                <span aria-hidden="true">+</span>
+              </button>
+            </div>
+
+            <section class="scan-box" aria-label="Escanear factura">
+              <div>
+                <h3>Escanear factura</h3>
+                <p>Subi o sacale foto al ticket. La imagen queda guardada solo en este dispositivo.</p>
+              </div>
+              <button class="scan-button" type="button" id="scanPickButton">Elegir o sacar foto</button>
+              <input id="receiptInput" class="scan-file-input" type="file" accept="image/*" capture="environment" />
+              <div id="scanStatus" class="scan-status" role="status"></div>
+              <img id="receiptPreview" class="receipt-preview" alt="Vista previa de factura" />
+            </section>
+
+            <label>
+              Tipo
+              <select id="typeInput" required>
+                <option value="expense">Gasto</option>
+                <option value="income">Ingreso</option>
+              </select>
+            </label>
+
+            <label>
+              Fecha
+              <input id="dateInput" type="date" required />
+            </label>
+
+            <label>
+              Categoria
+              <select id="categoryInput" required></select>
+            </label>
+
+            <label>
+              Ambito
+              <select id="scopeInput" required>
+                <option value="Personal">Personal</option>
+                <option value="Negocio">Negocio</option>
+              </select>
+            </label>
+
+            <label>
+              Cuenta
+              <select id="accountInput" required>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Banco">Banco</option>
+                <option value="Mercado Pago">Mercado Pago</option>
+                <option value="Visa">Visa</option>
+                <option value="Mastercard">Mastercard</option>
+              </select>
+            </label>
+
+            <label>
+              Tipo de pago
+              <select id="paymentInput" required>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Tarjeta">Tarjeta</option>
+                <option value="Visa">Visa</option>
+                <option value="Mastercard">Mastercard</option>
+              </select>
+            </label>
+
+            <label>
+              Modo de gasto o ingreso
+              <select id="spendModeInput" required>
+                <option value="Fijo">Fijo</option>
+                <option value="Variable">Variable</option>
+                <option value="Necesario">Necesario</option>
+                <option value="Extra">Extra</option>
+                <option value="Cuotas">Cuotas</option>
+                <option value="Inversion">Inversion</option>
+                <option value="Sueldo">Sueldo</option>
+                <option value="Venta">Venta</option>
+                <option value="Cobro">Cobro</option>
+                <option value="Ahorro">Ahorro</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </label>
+
+            <label>
+              Descripcion
+              <input id="descriptionInput" type="text" placeholder="Supermercado, sueldo, venta..." maxlength="60" required />
+            </label>
+
+            <label>
+              Monto
+              <input id="amountInput" type="text" inputmode="decimal" placeholder="0,00" required />
+            </label>
+
+            <details class="extra-fields">
+              <summary>Mas datos</summary>
+              <label>
+                Etiquetas
+                <input id="tagsInput" type="text" placeholder="auto, casa, trabajo..." maxlength="80" />
+              </label>
+              <label>
+                Vencimiento
+                <input id="dueDateInput" type="date" />
+              </label>
+              <label>
+                Notas internas
+                <textarea id="notesInput" maxlength="500" placeholder="Observaciones privadas..."></textarea>
+              </label>
+            </details>
+
+            <div id="formStatus" class="form-status" role="status"></div>
+            <button class="primary-button" type="submit">Agregar movimiento</button>
+            <button class="secondary-button hidden" type="button" id="cancelEditButton">Cancelar edicion</button>
+          </form>
+
+          <section class="panel list-panel">
+            <div class="panel-heading list-heading">
+              <div>
+                <h2>Movimientos</h2>
+                <p id="filterHint">Mostrando movimientos del mes seleccionado</p>
+              </div>
+              <div class="actions">
+                <input id="searchInput" class="action-input" type="search" placeholder="Buscar..." aria-label="Buscar movimientos" />
+                <input id="startDateFilter" class="action-input" type="date" aria-label="Fecha desde" />
+                <input id="endDateFilter" class="action-input" type="date" aria-label="Fecha hasta" />
+                <select id="typeFilter" aria-label="Filtrar por tipo">
+                  <option value="Todos">Todos</option>
+                  <option value="expense">Gastos</option>
+                  <option value="income">Ingresos</option>
+                </select>
+                <select id="categoryFilter" aria-label="Filtrar por categoria">
+                  <option value="Todas">Todas</option>
+                </select>
+                <select id="scopeFilter" aria-label="Filtrar por ambito">
+                  <option value="Todos">Personal y negocio</option>
+                  <option value="Personal">Personal</option>
+                  <option value="Negocio">Negocio</option>
+                </select>
+                <select id="accountFilter" aria-label="Filtrar por cuenta">
+                  <option value="Todas">Todas las cuentas</option>
+                </select>
+                <select id="paymentFilter" aria-label="Filtrar por tipo de pago">
+                  <option value="Todos">Todos los pagos</option>
+                </select>
+                <select id="spendModeFilter" aria-label="Filtrar por modo de gasto o ingreso">
+                  <option value="Todos">Todos los modos</option>
+                </select>
+                <button class="secondary-button" type="button" id="reportButton">Reporte</button>
+                <button class="secondary-button" type="button" id="mailButton">Mail</button>
+                <button class="secondary-button" type="button" id="exportButton">CSV</button>
+                <button class="secondary-button" type="button" id="excelButton">Excel</button>
+              </div>
+            </div>
+
+            <div class="chart-wrap" aria-label="Gastos por categoria">
+              <canvas id="categoryChart" width="760" height="220"></canvas>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Cuenta</th>
+                    <th>Ambito</th>
+                    <th>Categoria</th>
+                    <th>Pago</th>
+                    <th>Modo</th>
+                    <th>Descripcion</th>
+                    <th>Factura</th>
+                    <th class="amount-col">Monto</th>
+                    <th>Etiquetas</th>
+                    <th>Vence</th>
+                    <th class="delete-col"></th>
+                  </tr>
+                </thead>
+                <tbody id="expenseTable"></tbody>
+              </table>
+              <div id="emptyState" class="empty-state">Todavia no hay movimientos para este filtro.</div>
+            </div>
+          </section>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="budgets">
+        <section class="insight-grid compact-tools" aria-label="Presupuestos y recurrentes">
+          <article class="panel mini-panel">
+            <div class="panel-heading">
+              <h2>Presupuesto</h2>
+            </div>
+            <label>
+              Categoria
+              <select id="budgetCategoryInput"></select>
+            </label>
+            <label>
+              Limite mensual
+              <input id="budgetAmountInput" type="text" inputmode="decimal" placeholder="0,00" />
+            </label>
+            <button class="secondary-button" type="button" id="budgetSaveButton">Guardar limite</button>
+            <div id="budgetList" class="stack-list"></div>
+          </article>
+
+          <article class="panel mini-panel">
+            <div class="panel-heading">
+              <h2>Recurrentes</h2>
+            </div>
+            <label>
+              Repetir movimiento actual cada mes
+              <select id="recurringDayInput">
+                <option value="same">Mismo dia</option>
+                <option value="1">Dia 1</option>
+                <option value="10">Dia 10</option>
+                <option value="15">Dia 15</option>
+              </select>
+            </label>
+            <button class="secondary-button" type="button" id="recurringSaveButton">Guardar recurrente</button>
+            <button class="secondary-button" type="button" id="recurringApplyButton">Generar del mes</button>
+            <div id="recurringList" class="stack-list"></div>
+          </article>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="debts">
+        <section class="insight-grid compact-tools" aria-label="Deudas">
+          <article class="panel mini-panel">
+            <div class="panel-heading">
+              <h2>Deudas</h2>
+            </div>
+            <label>
+              Tipo
+              <select id="debtDirectionInput">
+                <option value="owed_to_me">Me deben</option>
+                <option value="i_owe">Debo</option>
+              </select>
+            </label>
+            <label>
+              Persona
+              <input id="debtPersonInput" type="text" maxlength="50" placeholder="Nombre" />
+            </label>
+            <label>
+              Monto
+              <input id="debtAmountInput" type="text" inputmode="decimal" placeholder="0,00" />
+            </label>
+            <label>
+              Moneda
+              <select id="debtCurrencyInput">
+                <option value="ARS">Pesos ARG</option>
+                <option value="USD">Dolares</option>
+              </select>
+            </label>
+            <label>
+              Vencimiento
+              <input id="debtDueInput" type="date" />
+            </label>
+            <button class="secondary-button" type="button" id="debtSaveButton">Guardar deuda</button>
+            <div id="debtList" class="stack-list"></div>
+          </article>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="cards">
+        <section class="insight-grid compact-tools" aria-label="Tarjetas">
+          <article class="panel mini-panel">
+            <div class="panel-heading">
+              <h2>Tarjetas</h2>
+            </div>
+            <label>
+              Tarjeta
+              <select id="cardNameInput">
+                <option value="Visa">Visa</option>
+                <option value="Mastercard">Mastercard</option>
+              </select>
+            </label>
+            <label>
+              Dia de cierre
+              <input id="cardCloseInput" type="number" min="1" max="31" placeholder="25" />
+            </label>
+            <label>
+              Dia de vencimiento
+              <input id="cardDueInput" type="number" min="1" max="31" placeholder="10" />
+            </label>
+            <button class="secondary-button" type="button" id="cardSaveButton">Guardar tarjeta</button>
+            <div id="cardList" class="stack-list"></div>
+          </article>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="annual">
+        <section class="insight-grid compact-tools" aria-label="Panel anual">
+          <article class="panel mini-panel">
+            <div class="panel-heading">
+              <h2>Panel anual</h2>
+            </div>
+            <div id="annualPanel" class="stack-list"></div>
+            <label>
+              Nuevo PIN
+              <input id="pinInput" type="password" inputmode="numeric" placeholder="Opcional" />
+            </label>
+            <button class="secondary-button" type="button" id="pinSaveButton">Guardar PIN</button>
+            <button class="secondary-button" type="button" id="pinClearButton">Quitar PIN</button>
+          </article>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="data">
+        <section class="insight-grid compact-tools" aria-label="Datos">
+          <article class="panel mini-panel">
+            <div class="panel-heading">
+              <h2>Datos</h2>
+            </div>
+            <button class="secondary-button" type="button" id="backupButton">Copia de seguridad</button>
+            <button class="secondary-button" type="button" id="restorePickButton">Restaurar</button>
+            <input id="restoreInput" class="scan-file-input" type="file" accept="application/json,.json" />
+            <div id="dataStatus" class="form-status" role="status"></div>
+          </article>
+          <article class="panel mini-panel">
+            <div class="panel-heading">
+              <h2>Sincronizacion</h2>
+            </div>
+            <label>
+              Supabase URL
+              <input id="onlineUrlInput" type="url" placeholder="https://xxxxx.supabase.co" />
+            </label>
+            <label>
+              Clave publica anonima
+              <input id="onlineKeyInput" type="password" placeholder="clave publica anonima" />
+            </label>
+            <label>
+              Correo
+              <input id="onlineEmailInput" type="email" placeholder="usuario@email.com" />
+            </label>
+            <label>
+              Contrasena
+              <input id="onlinePasswordInput" type="password" placeholder="minimo 6 caracteres" />
+            </label>
+            <button class="secondary-button" type="button" id="onlineSaveButton">Guardar conexion</button>
+            <button class="secondary-button" type="button" id="onlineRegisterButton">Registrar usuario</button>
+            <button class="primary-button" type="button" id="onlineLoginButton">Entrar</button>
+            <button class="secondary-button" type="button" id="onlineLogoutButton">Salir</button>
+            <button class="primary-button" type="button" id="onlinePushButton">Actualizar sistema completo</button>
+            <button class="secondary-button" type="button" id="onlinePullButton">Traer sistema completo a este dispositivo</button>
+            <div class="stack-item">
+              <strong>Sincronizacion automatica</strong>
+              <span>Cada usuario entra con correo y contrasena. Cada dispositivo abierto sube cambios, baja al abrir y revisa la nube cada pocos segundos.</span>
+              <span>Tabla: finance_profiles con identificador de usuario, datos guardados y fecha de actualizacion.</span>
+            </div>
+            <div id="onlineUserStatus" class="stack-list"></div>
+            <div id="onlineStatus" class="form-status" role="status"></div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js?v=26"></script>
+  </body>
+</html>
