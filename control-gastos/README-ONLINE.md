@@ -1,4 +1,4 @@
-# Control de gastos e ingresos
+# Cuentas Claras
 
 Esta carpeta ya esta lista para publicar como app web estatica.
 
@@ -32,15 +32,14 @@ Los gastos e ingresos se guardan en el navegador del dispositivo, junto con cuen
 
 ## Sincronizacion en la nube con Supabase
 
-1. Crea un proyecto en Supabase.
-2. En SQL Editor, pega y ejecuta el contenido de `supabase-setup.sql`.
-3. En Supabase, copia la direccion del proyecto y la clave publica anonima.
-4. En la app, entra en Datos > Sincronizacion.
-5. Pega URL y clave publica anonima.
-6. Registra o entra con correo y contrasena.
-7. En cada dispositivo, usa la misma URL, clave y usuario.
-8. Cada dispositivo abierto sube cambios al instante, baja cambios al abrir, al volver a enfocar la app y revisa la nube cada pocos segundos.
-9. Si un dispositivo esta apagado o cerrado, se actualiza cuando se vuelva a abrir la app.
+La app ya trae cargada la direccion de Supabase y la clave publica anonima. El usuario no tiene que tocar esos datos tecnicos.
+
+1. En Supabase, ejecutar una sola vez el contenido de `supabase-setup.sql`.
+2. Abrir la app.
+3. Crear cuenta o entrar con correo y contrasena.
+4. Repetir el mismo ingreso en la PC y en el telefono.
+5. Cada dispositivo abierto sube cambios al instante, baja cambios al abrir, al volver a enfocar la app y revisa la nube cada pocos segundos.
+6. Si un dispositivo esta apagado o cerrado, se actualiza cuando se vuelva a abrir la app.
 
 Importante: esto actualiza **todo el sistema junto**, no por partes. Cada dispositivo abierto sube una copia completa despues de cada cambio y revisa cambios en la nube automaticamente. Un dispositivo apagado no puede actualizarse hasta que se prenda y abra la app. Cada usuario ve solo sus propios datos gracias al ingreso con usuario de Supabase. Esta integracion sigue siendo una sincronizacion simple por copia completa; si el mismo usuario edita en dos dispositivos al mismo tiempo, queda la ultima copia subida.
 
@@ -50,9 +49,9 @@ Si la computadora de escritorio ya tiene datos cargados, esa compu tiene que ser
 
 1. Abrir la app en la computadora donde estan los datos.
 2. Ir a Datos > Copia de seguridad y descargar una copia manual.
-3. Ir a Datos > Sincronizacion.
-4. Entrar o registrar el usuario de Benjamin Medina.
-5. Presionar Subir datos para mandar esa copia completa a Supabase.
+3. Cerrar sesion si hiciera falta.
+4. Entrar o registrar el usuario de Benjamin Medina desde la pantalla inicial.
+5. Ir a Datos > Sincronizacion y presionar Actualizar sistema completo para mandar esa copia completa a Supabase.
 6. Recien despues entrar con el mismo usuario en el celular u otra computadora.
 
 Como proteccion extra, la app guarda una copia automatica local antes de restaurar un archivo o antes de traer una copia desde la nube. Ese resguardo queda en la misma computadora, dentro del navegador.

@@ -8,6 +8,8 @@ const ONLINE_CONFIG_STORAGE_KEY = "control-gastos:online-config:v1";
 const ONLINE_SESSION_STORAGE_KEY = "control-gastos:online-session:v1";
 const ONLINE_LAST_SYNC_STORAGE_KEY = "control-gastos:online-last-sync:v1";
 const SAFETY_BACKUPS_STORAGE_KEY = "control-gastos:safety-backups:v1";
+const DEFAULT_SUPABASE_URL = "https://dcwfzymlyuoifufsdou.supabase.co";
+const DEFAULT_SUPABASE_KEY = "sb_publishable_mJPeYuUUu0R9ljycjxxdLw_QujYaj7L";
 const EXPENSE_CATEGORIES = ["Comida", "Transporte", "Servicios", "Casa", "Salud", "Ocio", "Educacion", "Otros"];
 const INCOME_CATEGORIES = ["Sueldo", "Ventas", "Transferencia", "Alquiler", "Intereses", "Otros"];
 const PAYMENT_METHODS = ["Efectivo", "Transferencia", "Tarjeta", "Visa", "Mastercard"];
@@ -55,6 +57,13 @@ let applyingOnlineSnapshot = false;
 let hasPendingOnlinePush = false;
 
 const elements = {
+  authScreen: document.querySelector("#authScreen"),
+  appShell: document.querySelector(".app-shell"),
+  authEmailInput: document.querySelector("#authEmailInput"),
+  authPasswordInput: document.querySelector("#authPasswordInput"),
+  authLoginButton: document.querySelector("#authLoginButton"),
+  authRegisterButton: document.querySelector("#authRegisterButton"),
+  authStatus: document.querySelector("#authStatus"),
   form: document.querySelector("#expenseForm"),
   tabs: Array.from(document.querySelectorAll("[data-tab]")),
   tabPanels: Array.from(document.querySelectorAll("[data-panel]")),
@@ -148,17 +157,19 @@ const elements = {
   pinClearButton: document.querySelector("#pinClearButton"),
 };
 
-const colors = ["#d71920", "#a80f16", "#e25757", "#7a0b10", "#ff8a8a", "#c23434", "#8f2c2c", "#5e1b1b"];
+const colors = ["#0f766e", "#14b8a6", "#22c55e", "#0ea5e9", "#6366f1", "#f59e0b", "#ef4444", "#334155"];
 
-if (state.pin) {
+if (state.pin && state.onlineSession?.access_token) {
   elements.lockScreen.classList.remove("hidden");
 }
 
 elements.monthFilter.value = state.month;
 elements.dateInput.value = todayKey();
-elements.onlineUrlInput.value = state.onlineConfig.url || "";
-elements.onlineKeyInput.value = state.onlineConfig.key || "";
+elements.onlineUrlInput.value = state.onlineConfig.url || DEFAULT_SUPABASE_URL;
+elements.onlineKeyInput.value = state.onlineConfig.key || DEFAULT_SUPABASE_KEY;
 elements.onlineEmailInput.value = state.onlineSession.user?.email || "";
+elements.authEmailInput.value = state.onlineSession.user?.email || "";
+renderAuthGate();
 renderOnlineUserStatus();
 startOnlinePolling();
 populateCategoryInput();
@@ -409,6 +420,14 @@ elements.onlineRegisterButton.addEventListener("click", () => {
 });
 
 elements.onlineLoginButton.addEventListener("click", () => {
+  loginOnlineUser();
+});
+
+elements.authRegisterButton.addEventListener("click", () => {
+  registerOnlineUser();
+});
+
+elements.authLoginButton.addEventListener("click", () => {
   loginOnlineUser();
 });
 
@@ -1069,7 +1088,7 @@ function drawChart(totals) {
     ctx.font = "13px Arial";
     ctx.fillText(label, 0, y + 17);
 
-    ctx.fillStyle = "#fff0f0";
+    ctx.fillStyle = "#ecfdf5";
     roundRect(ctx, labelWidth, y, chartWidth, barHeight, 6);
     ctx.fill();
 
@@ -1077,7 +1096,7 @@ function drawChart(totals) {
     roundRect(ctx, labelWidth, y, width, barHeight, 6);
     ctx.fill();
 
-    ctx.fillStyle = "#281b1b";
+    ctx.fillStyle = "#0f172a";
     ctx.font = "700 13px Arial";
     ctx.fillText(currency.format(value), labelWidth + width + 10, y + 17);
   });
@@ -1130,7 +1149,11 @@ function loadCards() {
 }
 
 function loadOnlineConfig() {
-  return loadJson(ONLINE_CONFIG_STORAGE_KEY, { url: "", key: "" });
+  const saved = loadJson(ONLINE_CONFIG_STORAGE_KEY, {});
+  return {
+    url: saved.url || DEFAULT_SUPABASE_URL,
+    key: saved.key || DEFAULT_SUPABASE_KEY,
+  };
 }
 
 function loadOnlineSession() {
@@ -1346,6 +1369,11 @@ function setFormStatus(message, type = "") {
   elements.formStatus.classList.toggle("success", type === "success");
 }
 
+function setAuthStatus(message, type = "") {
+  elements.authStatus.textContent = message;
+  elements.authStatus.classList.toggle("success", type === "success");
+}
+
 function setDataStatus(message, type = "") {
   elements.dataStatus.textContent = message;
   elements.dataStatus.classList.toggle("success", type === "success");
@@ -1526,10 +1554,16 @@ function startOnlinePolling() {
   }, 8000);
 }
 
+function renderAuthGate() {
+  const isConnected = Boolean(state.onlineSession?.access_token);
+  elements.authScreen.classList.toggle("hidden", isConnected);
+  elements.appShell.classList.toggle("hidden", !isConnected);
+}
+
 function readOnlineConfigFromForm() {
   return {
-    url: elements.onlineUrlInput.value.trim().replace(/\/$/, ""),
-    key: elements.onlineKeyInput.value.trim(),
+    url: (elements.onlineUrlInput.value.trim() || DEFAULT_SUPABASE_URL).replace(/\/$/, ""),
+    key: elements.onlineKeyInput.value.trim() || DEFAULT_SUPABASE_KEY,
   };
 }
 
@@ -1553,9 +1587,11 @@ function authEndpoint(config, path) {
 }
 
 function readOnlineCredentials() {
+  const authEmail = elements.authEmailInput.value.trim();
+  const authPassword = elements.authPasswordInput.value;
   return {
-    email: elements.onlineEmailInput.value.trim(),
-    password: elements.onlinePasswordInput.value,
+    email: authEmail || elements.onlineEmailInput.value.trim(),
+    password: authPassword || elements.onlinePasswordInput.value,
   };
 }
 
@@ -1570,7 +1606,11 @@ function requireOnlineSession(silent = false) {
 function saveOnlineSession(session) {
   state.onlineSession = session;
   localStorage.setItem(ONLINE_SESSION_STORAGE_KEY, JSON.stringify(session));
+  elements.authEmailInput.value = session.user?.email || elements.authEmailInput.value;
+  elements.onlineEmailInput.value = session.user?.email || elements.onlineEmailInput.value;
+  elements.authPasswordInput.value = "";
   elements.onlinePasswordInput.value = "";
+  renderAuthGate();
   renderOnlineUserStatus();
   startOnlinePolling();
 }
@@ -1587,9 +1627,11 @@ async function registerOnlineUser() {
   if (!config) return;
   const credentials = readOnlineCredentials();
   if (!credentials.email || credentials.password.length < 6) {
+    setAuthStatus("Completa correo y contrasena de al menos 6 caracteres.");
     setOnlineStatus("Completa correo y contrasena de al menos 6 caracteres.");
     return;
   }
+  setAuthStatus("Creando cuenta...");
   setOnlineStatus("Registrando usuario...");
   try {
     const response = await fetch(authEndpoint(config, "signup"), {
@@ -1605,12 +1647,15 @@ async function registerOnlineUser() {
     if (data.access_token) {
       saveOnlineSession(data);
       await syncPushOnline(true);
+      setAuthStatus("Cuenta creada. Sincronizacion automatica activa.", "success");
       setOnlineStatus("Usuario registrado y sistema sincronizado.", "success");
     } else {
+      setAuthStatus("Cuenta creada. Revisa tu correo si pide confirmacion.", "success");
       setOnlineStatus("Usuario registrado. Revisa el correo si Supabase pide confirmacion, luego entra.", "success");
     }
   } catch (error) {
     console.error(error);
+    setAuthStatus("No pude crear la cuenta. Revisa correo o contrasena.");
     setOnlineStatus("No pude registrar el usuario. Revisa correo, clave o configuracion de Supabase.");
   }
 }
@@ -1620,9 +1665,11 @@ async function loginOnlineUser() {
   if (!config) return;
   const credentials = readOnlineCredentials();
   if (!credentials.email || !credentials.password) {
+    setAuthStatus("Completa correo y contrasena.");
     setOnlineStatus("Completa correo y contrasena.");
     return;
   }
+  setAuthStatus("Entrando...");
   setOnlineStatus("Entrando...");
   try {
     const response = await fetch(authEndpoint(config, "token?grant_type=password"), {
@@ -1637,9 +1684,11 @@ async function loginOnlineUser() {
     if (!response.ok) throw new Error(data.error_description || data.msg || "No se pudo entrar");
     saveOnlineSession(data);
     await syncPullOnline(false);
+    setAuthStatus("Listo. Sincronizacion automatica activa.", "success");
     setOnlineStatus("Usuario conectado. Sincronizacion automatica activa.", "success");
   } catch (error) {
     console.error(error);
+    setAuthStatus("No pude entrar. Revisa correo, contrasena o confirmacion de correo.");
     setOnlineStatus("No pude entrar. Revisa correo, contrasena o confirmacion de correo.");
   }
 }
@@ -1649,7 +1698,9 @@ function logoutOnlineUser() {
   localStorage.removeItem(ONLINE_SESSION_STORAGE_KEY);
   localStorage.removeItem(ONLINE_LAST_SYNC_STORAGE_KEY);
   clearInterval(onlinePollTimer);
+  renderAuthGate();
   renderOnlineUserStatus();
+  setAuthStatus("Sesion cerrada.");
   setOnlineStatus("Usuario desconectado.", "success");
 }
 
@@ -1870,14 +1921,14 @@ function openMonthlyReport() {
         <title>Reporte de gastos e ingresos ${escapeHtml(state.month)}</title>
         <style>
           * { box-sizing: border-box; }
-          body { margin: 0; color: #281b1b; font-family: Arial, Helvetica, sans-serif; background: #fff5f5; }
+          body { margin: 0; color: #0f172a; font-family: Arial, Helvetica, sans-serif; background: #f6f8fb; }
           main { width: min(960px, calc(100% - 28px)); margin: 0 auto; padding: 28px 0; }
-          header { display: flex; justify-content: space-between; gap: 16px; align-items: start; border-bottom: 4px solid #d71920; padding-bottom: 16px; }
+          header { display: flex; justify-content: space-between; gap: 16px; align-items: start; border-bottom: 4px solid #0f766e; padding-bottom: 16px; }
           h1 { margin: 0; font-size: 28px; }
           h2 { margin: 24px 0 10px; font-size: 18px; }
           .muted { color: #776464; margin: 6px 0 0; }
           .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-          .print { border: 0; border-radius: 8px; background: #d71920; color: white; font-weight: 700; padding: 10px 14px; cursor: pointer; text-decoration: none; display: inline-block; }
+          .print { border: 0; border-radius: 8px; background: #0f766e; color: white; font-weight: 700; padding: 10px 14px; cursor: pointer; text-decoration: none; display: inline-block; }
           .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 18px; }
           .metric { background: white; border: 1px solid #f0d2d2; border-radius: 8px; padding: 14px; }
           .metric span { display: block; color: #776464; font-size: 12px; margin-bottom: 8px; }
@@ -1886,7 +1937,7 @@ function openMonthlyReport() {
           .negative { color: #b00020; }
           table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #f0d2d2; }
           th, td { padding: 10px 12px; border-bottom: 1px solid #f0d2d2; text-align: left; }
-          th { background: #d71920; color: white; font-size: 12px; text-transform: uppercase; }
+          th { background: #0f766e; color: white; font-size: 12px; text-transform: uppercase; }
           .amount { text-align: right; font-weight: 700; }
           .empty { background: white; border: 1px solid #f0d2d2; border-radius: 8px; padding: 18px; color: #776464; }
           @media print {
@@ -1909,7 +1960,7 @@ function openMonthlyReport() {
               <p class="muted">Mes ${escapeHtml(state.month)} - Generado el ${formatDate(todayKey())}</p>
             </div>
             <div class="actions">
-              <a class="print" href="${emailReportHref(reportText)}">Enviar mail</a>
+              <a class="print" href="${emailReportHref(reportText)}">Enviar correo</a>
               <button class="print" onclick="window.print()">Imprimir / PDF</button>
             </div>
           </header>

@@ -1,4 +1,4 @@
-# Control de gastos e ingresos
+# Cuentas Claras
 
 Sistema web estatico para controlar ingresos, egresos, cuentas, tarjetas, deudas, presupuestos, movimientos recurrentes y sincronizacion en la nube.
 

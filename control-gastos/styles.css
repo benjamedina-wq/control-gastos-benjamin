@@ -1,18 +1,20 @@
 :root {
   color-scheme: light;
-  --bg: #fff5f5;
+  --bg: #f6f8fb;
   --surface: #ffffff;
-  --surface-2: #fff0f0;
-  --ink: #281b1b;
-  --muted: #776464;
-  --line: #f0d2d2;
-  --brand: #d71920;
-  --brand-dark: #a80f16;
-  --income: #147a3f;
-  --income-soft: #e8f7ee;
+  --surface-2: #ecfdf5;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #dbe4ee;
+  --brand: #0f766e;
+  --brand-dark: #115e59;
+  --brand-soft: #ccfbf1;
+  --income: #16a34a;
+  --income-soft: #dcfce7;
   --accent: #ffffff;
-  --danger: #b00020;
-  --shadow: 0 18px 45px rgba(92, 22, 22, 0.1);
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --shadow: 0 18px 45px rgba(15, 23, 42, 0.09);
 }
 
 * {
@@ -22,7 +24,9 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 32rem),
+    linear-gradient(135deg, #f8fafc 0%, #f6f8fb 52%, #eefdf9 100%);
   color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -37,7 +41,7 @@ textarea {
 .app-shell {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 28px 0;
+  padding: 28px 0 34px;
 }
 
 .topbar {
@@ -46,6 +50,11 @@ textarea {
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 22px;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%);
+  box-shadow: var(--shadow);
+  padding: 22px;
 }
 
 .eyebrow {
@@ -104,6 +113,45 @@ textarea {
   resize: vertical;
 }
 
+.auth-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(34, 197, 94, 0.18), transparent 18rem),
+    radial-gradient(circle at 82% 16%, rgba(14, 165, 233, 0.14), transparent 18rem),
+    linear-gradient(135deg, #f8fafc 0%, #eefdf9 100%);
+  padding: 20px;
+}
+
+.auth-panel {
+  display: grid;
+  gap: 14px;
+  width: min(420px, 100%);
+  border: 1px solid rgba(15, 118, 110, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.14);
+  padding: 26px;
+}
+
+.auth-panel h1 {
+  font-size: 2.25rem;
+  color: var(--brand-dark);
+}
+
+.auth-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.auth-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .lock-screen {
   position: fixed;
   inset: 0;
@@ -153,7 +201,7 @@ textarea {
   min-height: 40px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.86);
   color: var(--ink);
   cursor: pointer;
   font-weight: 700;
@@ -191,7 +239,7 @@ textarea {
   min-height: 96px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.92);
   padding: 18px;
   box-shadow: var(--shadow);
 }
@@ -229,7 +277,7 @@ textarea {
 .panel {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--shadow);
 }
 
@@ -271,9 +319,9 @@ textarea {
 .scan-box {
   display: grid;
   gap: 10px;
-  border: 1px dashed #efb5b5;
+  border: 1px dashed rgba(15, 118, 110, 0.38);
   border-radius: 8px;
-  background: #fffafa;
+  background: #f0fdfa;
   padding: 14px;
 }
 
@@ -383,20 +431,22 @@ label {
 .primary-button {
   min-height: 44px;
   border-radius: 8px;
-  background: var(--brand);
+  background: linear-gradient(135deg, var(--brand) 0%, #14b8a6 100%);
   color: #fff;
   font-weight: 700;
+  box-shadow: 0 12px 24px rgba(15, 118, 110, 0.22);
 }
 
 .primary-button:hover {
-  background: var(--brand-dark);
+  background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand) 100%);
+  transform: translateY(-1px);
 }
 
 .secondary-button {
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface-2);
+  background: #ffffff;
   color: var(--ink);
   padding: 0 14px;
   font-weight: 700;
@@ -630,6 +680,10 @@ td.amount-col {
   }
 
   .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-actions {
     grid-template-columns: 1fr;
   }
 

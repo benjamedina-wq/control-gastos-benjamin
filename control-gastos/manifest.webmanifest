@@ -1,13 +1,13 @@
 {
-  "name": "Control de gastos e ingresos",
-  "short_name": "Finanzas",
-  "description": "Control simple de gastos, ingresos y facturas personales.",
+  "name": "Cuentas Claras",
+  "short_name": "Cuentas",
+  "description": "Finanzas personales sincronizadas entre computadora y movil.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#fff5f5",
-  "theme_color": "#d71920",
+  "background_color": "#f6f8fb",
+  "theme_color": "#0f766e",
   "categories": ["finance", "productivity"],
   "icons": [
     {

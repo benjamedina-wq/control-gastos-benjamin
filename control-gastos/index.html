@@ -3,20 +3,41 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#d71920" />
+    <meta name="theme-color" content="#0f766e" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Finanzas" />
-    <title>Control de gastos e ingresos</title>
-    <link rel="manifest" href="manifest.webmanifest?v=26" />
+    <meta name="apple-mobile-web-app-title" content="Cuentas Claras" />
+    <title>Cuentas Claras</title>
+    <link rel="manifest" href="manifest.webmanifest?v=28" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon.svg" />
-    <link rel="stylesheet" href="styles.css?v=26" />
+    <link rel="stylesheet" href="styles.css?v=28" />
   </head>
   <body>
+    <section id="authScreen" class="auth-screen" aria-label="Ingreso">
+      <div class="auth-panel">
+        <p class="eyebrow">Finanzas personales</p>
+        <h1>Cuentas Claras</h1>
+        <p class="auth-copy">Tus finanzas en orden, sincronizadas entre computadora y movil.</p>
+        <label>
+          Correo
+          <input id="authEmailInput" type="email" autocomplete="email" placeholder="usuario@email.com" />
+        </label>
+        <label>
+          Contrasena
+          <input id="authPasswordInput" type="password" autocomplete="current-password" placeholder="minimo 6 caracteres" />
+        </label>
+        <div class="auth-actions">
+          <button class="primary-button" type="button" id="authLoginButton">Entrar</button>
+          <button class="secondary-button" type="button" id="authRegisterButton">Crear cuenta</button>
+        </div>
+        <div id="authStatus" class="form-status" role="status"></div>
+      </div>
+    </section>
+
     <section id="lockScreen" class="lock-screen hidden" aria-label="Bloqueo">
       <div class="lock-panel">
-        <h1>Finanzas</h1>
+        <h1>Cuentas Claras</h1>
         <label>
           PIN
           <input id="unlockPinInput" type="password" inputmode="numeric" autocomplete="current-password" />
@@ -26,11 +47,11 @@
       </div>
     </section>
 
-    <main class="app-shell">
+    <main class="app-shell hidden">
       <section class="topbar" aria-label="Resumen principal">
         <div>
-          <p class="eyebrow">Control personal</p>
-          <h1>Gastos e ingresos</h1>
+          <p class="eyebrow">Finanzas personales</p>
+          <h1>Cuentas Claras</h1>
         </div>
         <div class="month-picker">
           <label for="monthFilter">Mes</label>
@@ -407,11 +428,11 @@
             <div class="panel-heading">
               <h2>Sincronizacion</h2>
             </div>
-            <label>
+            <label class="hidden">
               Supabase URL
               <input id="onlineUrlInput" type="url" placeholder="https://xxxxx.supabase.co" />
             </label>
-            <label>
+            <label class="hidden">
               Clave publica anonima
               <input id="onlineKeyInput" type="password" placeholder="clave publica anonima" />
             </label>
@@ -423,7 +444,7 @@
               Contrasena
               <input id="onlinePasswordInput" type="password" placeholder="minimo 6 caracteres" />
             </label>
-            <button class="secondary-button" type="button" id="onlineSaveButton">Guardar conexion</button>
+            <button class="secondary-button hidden" type="button" id="onlineSaveButton">Guardar conexion</button>
             <button class="secondary-button" type="button" id="onlineRegisterButton">Registrar usuario</button>
             <button class="primary-button" type="button" id="onlineLoginButton">Entrar</button>
             <button class="secondary-button" type="button" id="onlineLogoutButton">Salir</button>
@@ -441,6 +462,6 @@
       </section>
     </main>
 
-    <script src="app.js?v=26"></script>
+    <script src="app.js?v=28"></script>
   </body>
 </html>
