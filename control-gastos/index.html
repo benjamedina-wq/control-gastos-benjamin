@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0f766e" />
+    <meta name="theme-color" content="#0b4bb3" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Cuentas Claras" />
     <title>Cuentas Claras</title>
-    <link rel="manifest" href="manifest.webmanifest?v=31" />
+    <link rel="manifest" href="manifest.webmanifest?v=34" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon.svg" />
-    <link rel="stylesheet" href="styles.css?v=31" />
+    <link rel="stylesheet" href="styles.css?v=34" />
   </head>
   <body>
     <section id="authScreen" class="auth-screen" aria-label="Ingreso">
@@ -266,27 +266,8 @@
               <canvas id="categoryChart" width="760" height="220"></canvas>
             </div>
 
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Tipo</th>
-                    <th>Cuenta</th>
-                    <th>Ambito</th>
-                    <th>Categoria</th>
-                    <th>Pago</th>
-                    <th>Modo</th>
-                    <th>Descripcion</th>
-                    <th>Factura</th>
-                    <th class="amount-col">Monto</th>
-                    <th>Etiquetas</th>
-                    <th>Vence</th>
-                    <th class="delete-col"></th>
-                  </tr>
-                </thead>
-                <tbody id="expenseTable"></tbody>
-              </table>
+            <div class="table-wrap movement-list-wrap">
+              <div id="expenseTable" class="movement-list" aria-label="Listado de movimientos"></div>
               <div id="emptyState" class="empty-state">Todavia no hay movimientos para este filtro.</div>
             </div>
           </section>
@@ -436,24 +417,23 @@
               Clave publica anonima
               <input id="onlineKeyInput" type="password" placeholder="clave publica anonima" />
             </label>
-            <label>
+            <label class="hidden">
               Correo
               <input id="onlineEmailInput" type="email" placeholder="usuario@email.com" />
             </label>
-            <label>
+            <label class="hidden">
               Contrasena
               <input id="onlinePasswordInput" type="password" placeholder="minimo 6 caracteres" />
             </label>
             <button class="secondary-button hidden" type="button" id="onlineSaveButton">Guardar conexion</button>
-            <button class="secondary-button" type="button" id="onlineRegisterButton">Registrar usuario</button>
-            <button class="primary-button" type="button" id="onlineLoginButton">Entrar</button>
-            <button class="secondary-button" type="button" id="onlineLogoutButton">Salir</button>
-            <button class="primary-button" type="button" id="onlinePushButton">Actualizar sistema completo</button>
-            <button class="secondary-button" type="button" id="onlinePullButton">Traer sistema completo a este dispositivo</button>
+            <button class="secondary-button hidden" type="button" id="onlineRegisterButton">Registrar usuario</button>
+            <button class="primary-button hidden" type="button" id="onlineLoginButton">Entrar</button>
+            <button class="secondary-button hidden" type="button" id="onlineLogoutButton">Salir</button>
+            <button class="primary-button hidden" type="button" id="onlinePushButton">Actualizar sistema completo</button>
+            <button class="secondary-button hidden" type="button" id="onlinePullButton">Traer sistema completo a este dispositivo</button>
             <div class="stack-item">
               <strong>Sincronizacion automatica</strong>
-              <span>Cada usuario entra con correo y contrasena. Cada dispositivo abierto sube cambios, baja al abrir y revisa la nube cada pocos segundos.</span>
-              <span>Tabla: finance_profiles con identificador de usuario, datos guardados y fecha de actualizacion.</span>
+              <span>Tus datos se guardan solos en la nube y se actualizan en tus dispositivos cuando usas la misma cuenta.</span>
             </div>
             <div id="onlineUserStatus" class="stack-list"></div>
             <div id="onlineStatus" class="form-status" role="status"></div>
@@ -462,6 +442,6 @@
       </section>
     </main>
 
-    <script src="app.js?v=31"></script>
+    <script src="app.js?v=34"></script>
   </body>
 </html>

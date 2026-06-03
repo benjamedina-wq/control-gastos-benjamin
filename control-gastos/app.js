@@ -701,24 +701,34 @@ function render() {
   elements.expenseTable.innerHTML = rows
     .map(
       (expense) => `
-        <tr>
-          <td>${formatDate(expense.date)}</td>
-          <td>${typePillMarkup(expense)}</td>
-          <td>${metaPillMarkup(accountName(expense))}</td>
-          <td>${metaPillMarkup(scopeName(expense))}</td>
-          <td><span class="category-pill">${escapeHtml(expense.category)}</span></td>
-          <td>${metaPillMarkup(paymentMethod(expense))}</td>
-          <td>${metaPillMarkup(spendMode(expense))}</td>
-          <td>${escapeHtml(expense.description)}</td>
-          <td>${receiptImageMarkup(expense.receiptImage)}</td>
-          <td class="amount-col ${movementType(expense) === "income" ? "positive" : "negative"}">${signedCurrency(expense)}</td>
-          <td>${escapeHtml(tagsText(expense) || "-")}</td>
-          <td>${expense.dueDate ? formatDate(expense.dueDate) : "-"}</td>
-          <td class="delete-col">
-            <button class="edit-button" type="button" data-edit-id="${expense.id}" title="Editar" aria-label="Editar movimiento">e</button>
-            <button class="delete-button" type="button" data-delete-id="${expense.id}" title="Borrar" aria-label="Borrar movimiento">x</button>
-          </td>
-        </tr>
+        <article class="movement-card ${movementType(expense)} ${categoryColorClass(expense.category)}">
+          <div class="movement-date">${formatDate(expense.date)}</div>
+          <div class="movement-icon" aria-hidden="true">${categoryInitial(expense.category)}</div>
+          <div class="movement-main">
+            <div class="movement-title-row">
+              <strong>${escapeHtml(expense.description)}</strong>
+              <span class="movement-amount ${movementType(expense) === "income" ? "positive" : "negative"}">${signedCurrency(expense)}</span>
+            </div>
+            <div class="movement-bar">
+              <span>${escapeHtml(expense.category)}</span>
+            </div>
+            <div class="movement-meta">
+              ${typePillMarkup(expense)}
+              ${metaPillMarkup(accountName(expense))}
+              ${metaPillMarkup(paymentMethod(expense))}
+              ${metaPillMarkup(spendMode(expense))}
+              ${tagsText(expense) ? metaPillMarkup(tagsText(expense)) : ""}
+              ${expense.dueDate ? metaPillMarkup(`Vence ${formatDate(expense.dueDate)}`) : ""}
+            </div>
+          </div>
+          <div class="movement-side">
+            ${receiptImageMarkup(expense.receiptImage)}
+            <div class="movement-actions">
+              <button class="edit-button" type="button" data-edit-id="${expense.id}" title="Editar" aria-label="Editar movimiento">e</button>
+              <button class="delete-button" type="button" data-delete-id="${expense.id}" title="Borrar" aria-label="Borrar movimiento">x</button>
+            </div>
+          </div>
+        </article>
       `
     )
     .join("");
@@ -882,6 +892,17 @@ function typePillMarkup(expense) {
 
 function metaPillMarkup(label) {
   return `<span class="meta-pill">${escapeHtml(label)}</span>`;
+}
+
+function categoryInitial(category) {
+  return escapeHtml(String(category || "?").trim().charAt(0).toUpperCase() || "?");
+}
+
+function categoryColorClass(category) {
+  const palette = ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"];
+  const text = String(category || "");
+  const index = [...text].reduce((sum, char) => sum + char.charCodeAt(0), 0) % palette.length;
+  return `movement-${palette[index]}`;
 }
 
 function signedCurrency(expense) {
@@ -1149,10 +1170,9 @@ function loadCards() {
 }
 
 function loadOnlineConfig() {
-  const saved = loadJson(ONLINE_CONFIG_STORAGE_KEY, {});
   return {
-    url: saved.url || DEFAULT_SUPABASE_URL,
-    key: saved.key || DEFAULT_SUPABASE_KEY,
+    url: DEFAULT_SUPABASE_URL,
+    key: DEFAULT_SUPABASE_KEY,
   };
 }
 
@@ -1562,8 +1582,8 @@ function renderAuthGate() {
 
 function readOnlineConfigFromForm() {
   return {
-    url: (elements.onlineUrlInput.value.trim() || DEFAULT_SUPABASE_URL).replace(/\/$/, ""),
-    key: elements.onlineKeyInput.value.trim() || DEFAULT_SUPABASE_KEY,
+    url: DEFAULT_SUPABASE_URL,
+    key: DEFAULT_SUPABASE_KEY,
   };
 }
 
@@ -1626,8 +1646,8 @@ function saveOnlineSession(session) {
 function renderOnlineUserStatus() {
   const email = state.onlineSession?.user?.email;
   elements.onlineUserStatus.innerHTML = email
-    ? `<div class="stack-item"><strong>Usuario conectado</strong><span>${escapeHtml(email)}</span></div>`
-    : '<div class="stack-item"><strong>Sin usuario conectado</strong><span>Registra o entra para sincronizar datos por usuario.</span></div>';
+    ? `<div class="stack-item"><strong>Cuenta activa</strong><span>${escapeHtml(email)}</span></div>`
+    : '<div class="stack-item"><strong>Sincronizacion pendiente</strong><span>Entra desde la pantalla inicial para activar la copia en la nube.</span></div>';
 }
 
 async function registerOnlineUser() {
