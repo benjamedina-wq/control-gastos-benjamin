@@ -7,6 +7,7 @@ const PIN_STORAGE_KEY = "control-gastos:pin:v1";
 const ONLINE_CONFIG_STORAGE_KEY = "control-gastos:online-config:v1";
 const ONLINE_SESSION_STORAGE_KEY = "control-gastos:online-session:v1";
 const ONLINE_LAST_SYNC_STORAGE_KEY = "control-gastos:online-last-sync:v1";
+const LOCAL_LAST_CHANGE_STORAGE_KEY = "control-gastos:local-last-change:v1";
 const SAFETY_BACKUPS_STORAGE_KEY = "control-gastos:safety-backups:v1";
 const DEFAULT_SUPABASE_URL = "https://dcwfzymlyyuoifufsdou.supabase.co";
 const DEFAULT_SUPABASE_KEY = "sb_publishable_mJPeYuUUu0R9ljycjxxdLw_QujYaj7L";
@@ -1207,9 +1208,17 @@ function loadJson(key, fallback) {
   }
 }
 
+function markLocalChange() {
+  if (applyingOnlineSnapshot) return "";
+  const value = new Date().toISOString();
+  localStorage.setItem(LOCAL_LAST_CHANGE_STORAGE_KEY, value);
+  return value;
+}
+
 function persist() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.expenses));
+    markLocalChange();
     scheduleOnlineSync();
     return true;
   } catch {
@@ -1223,6 +1232,7 @@ function persistSettings() {
   localStorage.setItem(RECURRING_STORAGE_KEY, JSON.stringify(state.recurring));
   localStorage.setItem(DEBT_STORAGE_KEY, JSON.stringify(state.debts));
   localStorage.setItem(CARD_STORAGE_KEY, JSON.stringify(state.cards));
+  markLocalChange();
   scheduleOnlineSync();
 }
 
@@ -1520,34 +1530,10 @@ function snapshotSignature(snapshot) {
   });
 }
 
-function snapshotScore(snapshot) {
-  const expenses = Array.isArray(snapshot?.expenses) ? snapshot.expenses : [];
-  const budgets = snapshot?.budgets && typeof snapshot.budgets === "object" ? snapshot.budgets : {};
-  const recurring = Array.isArray(snapshot?.recurring) ? snapshot.recurring : [];
-  const debts = Array.isArray(snapshot?.debts) ? snapshot.debts : [];
-  const cards = snapshot?.cards && typeof snapshot.cards === "object" ? snapshot.cards : {};
-  return (
-    expenses.length * 1000000 +
-    recurring.length * 10000 +
-    debts.length * 10000 +
-    Object.keys(budgets).length * 1000 +
-    Object.keys(cards).length * 1000
-  );
-}
-
-function chooseAuthoritativeSnapshot(localData, remoteData) {
-  const localHasData = snapshotHasContent(localData);
-  const remoteHasData = snapshotHasContent(remoteData);
-  if (localHasData && !remoteHasData) return "local";
-  if (!localHasData && remoteHasData) return "remote";
-  if (!localHasData && !remoteHasData) return "same";
-  if (snapshotSignature(localData) === snapshotSignature(remoteData)) return "same";
-
-  const localScore = snapshotScore(localData);
-  const remoteScore = snapshotScore(remoteData);
-  if (localScore > remoteScore) return "local";
-  if (remoteScore > localScore) return "remote";
-  return "remote";
+function isAfterDate(left, right) {
+  if (!left) return false;
+  if (!right) return true;
+  return new Date(left).getTime() > new Date(right).getTime();
 }
 
 function snapshotHasContent(snapshot) {
@@ -1581,6 +1567,7 @@ function restoreBackup(file) {
     try {
       saveSafetyBackup("antes-de-restaurar-archivo");
       applyDataSnapshot(JSON.parse(reader.result));
+      markLocalChange();
       localStorage.removeItem(ONLINE_LAST_SYNC_STORAGE_KEY);
       setDataStatus("Copia restaurada en este dispositivo.", "success");
       if (state.onlineSession?.access_token) {
@@ -1822,6 +1809,7 @@ async function syncPushOnline(isAutomatic = false) {
   if (!session) return;
   setOnlineStatus(isAutomatic ? "Guardando en la nube..." : "Subiendo datos...");
   try {
+    const pushedAt = new Date().toISOString();
     let response = await fetch(onlineEndpoint(config), {
       method: "POST",
       headers: {
@@ -1832,7 +1820,7 @@ async function syncPushOnline(isAutomatic = false) {
       },
       body: JSON.stringify({
         payload: createDataSnapshot(),
-        updated_at: new Date().toISOString(),
+        updated_at: pushedAt,
       }),
     });
     if (response.status === 401 && (await refreshOnlineSession(config))) {
@@ -1847,12 +1835,13 @@ async function syncPushOnline(isAutomatic = false) {
         },
         body: JSON.stringify({
           payload: createDataSnapshot(),
-          updated_at: new Date().toISOString(),
+          updated_at: pushedAt,
         }),
       });
     }
     if (!response.ok) throw new Error(await response.text());
-    localStorage.setItem(ONLINE_LAST_SYNC_STORAGE_KEY, new Date().toISOString());
+    localStorage.setItem(ONLINE_LAST_SYNC_STORAGE_KEY, pushedAt);
+    localStorage.setItem(LOCAL_LAST_CHANGE_STORAGE_KEY, pushedAt);
     hasPendingOnlinePush = false;
     setOnlineStatus(isAutomatic ? "Cambio guardado en la nube al instante." : "Sistema completo actualizado en la nube desde esta compu.", "success");
   } catch (error) {
@@ -1903,16 +1892,22 @@ async function syncPullOnline(isAutomatic = false, force = false) {
     }
     const localSnapshot = createDataSnapshot();
     const remoteSnapshot = rows[0].payload;
-    const source = chooseAuthoritativeSnapshot(localSnapshot, remoteSnapshot);
-    if (source === "same") {
+    const localChangedAt = localStorage.getItem(LOCAL_LAST_CHANGE_STORAGE_KEY) || "";
+    const localHasPendingChanges = snapshotHasContent(localSnapshot) && isAfterDate(localChangedAt, lastSync);
+    const remoteHasNewerChanges = isAfterDate(remoteUpdatedAt, lastSync);
+    if (snapshotSignature(localSnapshot) === snapshotSignature(remoteSnapshot)) {
       if (remoteUpdatedAt) localStorage.setItem(ONLINE_LAST_SYNC_STORAGE_KEY, remoteUpdatedAt);
       return;
     }
-    if (source === "local") {
+
+    if (localHasPendingChanges && (!remoteHasNewerChanges || isAfterDate(localChangedAt, remoteUpdatedAt))) {
       await syncPushOnline(true);
-      if (!isAutomatic) setOnlineStatus("La nube fue actualizada con los datos mas completos de este dispositivo.", "success");
+      if (!isAutomatic) setOnlineStatus("La nube fue actualizada con el ultimo cambio de este dispositivo.", "success");
       return;
     }
+
+    if (!remoteHasNewerChanges && !force) return;
+
     saveSafetyBackup("antes-de-descargar-desde-la-nube");
     applyDataSnapshot(remoteSnapshot);
     if (remoteUpdatedAt) localStorage.setItem(ONLINE_LAST_SYNC_STORAGE_KEY, remoteUpdatedAt);
