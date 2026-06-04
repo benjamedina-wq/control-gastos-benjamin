@@ -1518,12 +1518,20 @@ function saveSafetyBackup(reason) {
 function restoreBackup(file) {
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       saveSafetyBackup("antes-de-restaurar-archivo");
       applyDataSnapshot(JSON.parse(reader.result));
-      setDataStatus("Copia de seguridad restaurada.", "success");
-    } catch {
+      localStorage.removeItem(ONLINE_LAST_SYNC_STORAGE_KEY);
+      setDataStatus("Copia restaurada en este dispositivo.", "success");
+      if (state.onlineSession?.access_token) {
+        await syncPushOnline(false);
+        setDataStatus("Copia restaurada y subida a la nube. Ahora abrila en el celular con la misma cuenta.", "success");
+      } else {
+        setDataStatus("Copia restaurada. Entra con tu cuenta para subirla a la nube.", "success");
+      }
+    } catch (error) {
+      console.error(error);
       setDataStatus("No pude restaurar ese archivo.");
     }
   };
