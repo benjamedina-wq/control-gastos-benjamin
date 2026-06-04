@@ -446,7 +446,7 @@ elements.onlinePushButton.addEventListener("click", () => {
 });
 
 elements.onlinePullButton.addEventListener("click", () => {
-  syncPullOnline();
+  syncPullOnline(false, true);
 });
 
 elements.cancelEditButton.addEventListener("click", () => {
@@ -1510,6 +1510,46 @@ function createDataSnapshot() {
   };
 }
 
+function snapshotSignature(snapshot) {
+  return JSON.stringify({
+    expenses: Array.isArray(snapshot?.expenses) ? snapshot.expenses : [],
+    budgets: snapshot?.budgets || {},
+    recurring: Array.isArray(snapshot?.recurring) ? snapshot.recurring : [],
+    debts: Array.isArray(snapshot?.debts) ? snapshot.debts : [],
+    cards: snapshot?.cards || {},
+  });
+}
+
+function snapshotScore(snapshot) {
+  const expenses = Array.isArray(snapshot?.expenses) ? snapshot.expenses : [];
+  const budgets = snapshot?.budgets && typeof snapshot.budgets === "object" ? snapshot.budgets : {};
+  const recurring = Array.isArray(snapshot?.recurring) ? snapshot.recurring : [];
+  const debts = Array.isArray(snapshot?.debts) ? snapshot.debts : [];
+  const cards = snapshot?.cards && typeof snapshot.cards === "object" ? snapshot.cards : {};
+  return (
+    expenses.length * 1000000 +
+    recurring.length * 10000 +
+    debts.length * 10000 +
+    Object.keys(budgets).length * 1000 +
+    Object.keys(cards).length * 1000
+  );
+}
+
+function chooseAuthoritativeSnapshot(localData, remoteData) {
+  const localHasData = snapshotHasContent(localData);
+  const remoteHasData = snapshotHasContent(remoteData);
+  if (localHasData && !remoteHasData) return "local";
+  if (!localHasData && remoteHasData) return "remote";
+  if (!localHasData && !remoteHasData) return "same";
+  if (snapshotSignature(localData) === snapshotSignature(remoteData)) return "same";
+
+  const localScore = snapshotScore(localData);
+  const remoteScore = snapshotScore(remoteData);
+  if (localScore > remoteScore) return "local";
+  if (remoteScore > localScore) return "remote";
+  return "remote";
+}
+
 function snapshotHasContent(snapshot) {
   if (!snapshot) return false;
   return Boolean(
@@ -1670,6 +1710,26 @@ function saveOnlineSession(session) {
   startOnlinePolling();
 }
 
+async function refreshOnlineSession(config) {
+  const refreshToken = state.onlineSession?.refresh_token;
+  if (!refreshToken) return false;
+
+  try {
+    const response = await fetch(authEndpoint(config, "token?grant_type=refresh_token"), {
+      method: "POST",
+      headers: authHeaders(config),
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.access_token) return false;
+    saveOnlineSession(data);
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
 function renderOnlineUserStatus() {
   const email = state.onlineSession?.user?.email;
   elements.onlineUserStatus.innerHTML = email
@@ -1758,11 +1818,11 @@ function logoutOnlineUser() {
 async function syncPushOnline(isAutomatic = false) {
   const config = requireOnlineConfig(isAutomatic);
   if (!config) return;
-  const session = requireOnlineSession(isAutomatic);
+  let session = requireOnlineSession(isAutomatic);
   if (!session) return;
   setOnlineStatus(isAutomatic ? "Guardando en la nube..." : "Subiendo datos...");
   try {
-    const response = await fetch(onlineEndpoint(config), {
+    let response = await fetch(onlineEndpoint(config), {
       method: "POST",
       headers: {
         apikey: config.key,
@@ -1775,34 +1835,64 @@ async function syncPushOnline(isAutomatic = false) {
         updated_at: new Date().toISOString(),
       }),
     });
+    if (response.status === 401 && (await refreshOnlineSession(config))) {
+      session = state.onlineSession;
+      response = await fetch(onlineEndpoint(config), {
+        method: "POST",
+        headers: {
+          apikey: config.key,
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates",
+        },
+        body: JSON.stringify({
+          payload: createDataSnapshot(),
+          updated_at: new Date().toISOString(),
+        }),
+      });
+    }
     if (!response.ok) throw new Error(await response.text());
     localStorage.setItem(ONLINE_LAST_SYNC_STORAGE_KEY, new Date().toISOString());
     hasPendingOnlinePush = false;
     setOnlineStatus(isAutomatic ? "Cambio guardado en la nube al instante." : "Sistema completo actualizado en la nube desde esta compu.", "success");
   } catch (error) {
     console.error(error);
-    setOnlineStatus("No pude actualizar el sistema completo. Revisa la conexion, el usuario o la tabla finance_profiles.");
+    setOnlineStatus("No pude subir a la nube. Si sigue pasando, sali y volve a entrar con tu usuario.");
   }
 }
 
 async function syncPullOnline(isAutomatic = false, force = false) {
   const config = requireOnlineConfig(isAutomatic);
   if (!config) return;
-  const session = requireOnlineSession(isAutomatic);
+  let session = requireOnlineSession(isAutomatic);
   if (!session) return;
   if (isAutomatic && hasPendingOnlinePush) return;
   if (!isAutomatic) setOnlineStatus("Descargando datos...");
   try {
     const url = `${config.url}/rest/v1/finance_profiles?select=payload,updated_at`;
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       headers: {
         apikey: config.key,
         Authorization: `Bearer ${session.access_token}`,
       },
     });
+    if (response.status === 401 && (await refreshOnlineSession(config))) {
+      session = state.onlineSession;
+      response = await fetch(url, {
+        headers: {
+          apikey: config.key,
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+    }
     if (!response.ok) throw new Error(await response.text());
     const rows = await response.json();
     if (!rows.length || !rows[0].payload) {
+      if (snapshotHasContent(createDataSnapshot())) {
+        await syncPushOnline(true);
+        if (!isAutomatic) setOnlineStatus("La nube estaba vacia. Subi los datos de este dispositivo.", "success");
+        return;
+      }
       if (!isAutomatic) setOnlineStatus("No hay copia en la nube para este usuario.");
       return;
     }
@@ -1811,13 +1901,25 @@ async function syncPullOnline(isAutomatic = false, force = false) {
     if (!force && isAutomatic && remoteUpdatedAt && lastSync && new Date(remoteUpdatedAt) <= new Date(lastSync)) {
       return;
     }
+    const localSnapshot = createDataSnapshot();
+    const remoteSnapshot = rows[0].payload;
+    const source = chooseAuthoritativeSnapshot(localSnapshot, remoteSnapshot);
+    if (source === "same") {
+      if (remoteUpdatedAt) localStorage.setItem(ONLINE_LAST_SYNC_STORAGE_KEY, remoteUpdatedAt);
+      return;
+    }
+    if (source === "local") {
+      await syncPushOnline(true);
+      if (!isAutomatic) setOnlineStatus("La nube fue actualizada con los datos mas completos de este dispositivo.", "success");
+      return;
+    }
     saveSafetyBackup("antes-de-descargar-desde-la-nube");
-    applyDataSnapshot(rows[0].payload);
+    applyDataSnapshot(remoteSnapshot);
     if (remoteUpdatedAt) localStorage.setItem(ONLINE_LAST_SYNC_STORAGE_KEY, remoteUpdatedAt);
     setOnlineStatus(isAutomatic ? `Cambios de la nube recibidos: ${new Date().toLocaleTimeString("es-AR")}.` : `Sistema completo traido a este dispositivo. Ultima copia: ${remoteUpdatedAt ? new Date(remoteUpdatedAt).toLocaleString("es-AR") : "-"}.`, "success");
   } catch (error) {
     console.error(error);
-    if (!isAutomatic) setOnlineStatus("No pude descargar. Revisa la conexion, el usuario o la tabla finance_profiles.");
+    if (!isAutomatic) setOnlineStatus("No pude descargar. Sali y volve a entrar con el mismo usuario, o revisa la conexion.");
   }
 }
 
