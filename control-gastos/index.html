@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Cuentas Claras" />
     <title>Cuentas Claras</title>
-    <link rel="manifest" href="manifest.webmanifest?v=36" />
+    <link rel="manifest" href="manifest.webmanifest?v=37" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon.svg" />
-    <link rel="stylesheet" href="styles.css?v=36" />
+    <link rel="stylesheet" href="styles.css?v=37" />
   </head>
   <body>
     <section id="authScreen" class="auth-screen" aria-label="Ingreso">
@@ -121,8 +121,12 @@
                 <h3>Escanear factura</h3>
                 <p>Subi o sacale foto al ticket. La imagen queda guardada solo en este dispositivo.</p>
               </div>
-              <button class="scan-button" type="button" id="scanPickButton">Elegir o sacar foto</button>
-              <input id="receiptInput" class="scan-file-input" type="file" accept="image/*" capture="environment" />
+              <div class="scan-actions">
+                <button class="scan-button" type="button" id="scanCameraButton">Sacar foto</button>
+                <button class="scan-button" type="button" id="scanPickButton">Elegir archivo</button>
+              </div>
+              <input id="receiptCameraInput" class="scan-file-input" type="file" accept="image/*" capture="environment" />
+              <input id="receiptInput" class="scan-file-input" type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.pdf" />
               <div id="scanStatus" class="scan-status" role="status"></div>
               <img id="receiptPreview" class="receipt-preview" alt="Vista previa de factura" />
             </section>
@@ -442,6 +446,6 @@
       </section>
     </main>
 
-    <script src="app.js?v=36"></script>
+    <script src="app.js?v=37"></script>
   </body>
 </html>

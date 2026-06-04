@@ -109,7 +109,9 @@ const elements = {
   reportButton: document.querySelector("#reportButton"),
   mailButton: document.querySelector("#mailButton"),
   seedButton: document.querySelector("#seedButton"),
+  scanCameraButton: document.querySelector("#scanCameraButton"),
   scanPickButton: document.querySelector("#scanPickButton"),
+  receiptCameraInput: document.querySelector("#receiptCameraInput"),
   receiptInput: document.querySelector("#receiptInput"),
   scanStatus: document.querySelector("#scanStatus"),
   receiptPreview: document.querySelector("#receiptPreview"),
@@ -227,6 +229,10 @@ elements.startDateFilter.addEventListener("change", () => {
 elements.endDateFilter.addEventListener("change", () => {
   state.endDate = elements.endDateFilter.value;
   render();
+});
+
+elements.scanCameraButton.addEventListener("click", () => {
+  elements.receiptCameraInput.click();
 });
 
 elements.scanPickButton.addEventListener("click", () => {
@@ -511,12 +517,24 @@ elements.pinClearButton.addEventListener("click", () => {
   setDataStatus("PIN quitado.", "success");
 });
 
-elements.receiptInput.addEventListener("change", async () => {
-  const file = elements.receiptInput.files[0];
+elements.receiptCameraInput.addEventListener("change", () => {
+  handleReceiptFile(elements.receiptCameraInput.files[0], elements.receiptCameraInput);
+});
+
+elements.receiptInput.addEventListener("change", () => {
+  handleReceiptFile(elements.receiptInput.files[0], elements.receiptInput);
+});
+
+async function handleReceiptFile(file, inputElement) {
   if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    setScanStatus("Por ahora el lector acepta imagenes. Elegi una foto o captura del comprobante.");
+    inputElement.value = "";
+    return;
+  }
 
   try {
-    setScanStatus("Foto seleccionada. Guardando copia local...");
+    setScanStatus("Comprobante seleccionado. Guardando copia local...");
     currentReceiptImage = await compressReceiptImage(file);
     elements.receiptPreview.src = currentReceiptImage;
     elements.receiptPreview.classList.add("visible");
@@ -544,7 +562,8 @@ elements.receiptInput.addEventListener("change", async () => {
     console.error(error);
     setScanStatus("La foto quedo guardada, pero no pude leer el texto. Carga los datos manualmente.");
   }
-});
+  inputElement.value = "";
+}
 
 elements.exportButton.addEventListener("click", () => {
   const rows = filteredExpenses();

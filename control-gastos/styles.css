@@ -419,6 +419,12 @@ textarea {
   line-height: 1.35;
 }
 
+.scan-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .scan-button {
   min-height: 40px;
   display: inline-grid;
@@ -919,6 +925,10 @@ td.amount-col {
   }
 
   .auth-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .scan-actions {
     grid-template-columns: 1fr;
   }
 
