@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Cuentas Claras" />
     <title>Cuentas Claras</title>
-    <link rel="manifest" href="manifest.webmanifest?v=38" />
+    <link rel="manifest" href="manifest.webmanifest?v=40" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon.svg" />
-    <link rel="stylesheet" href="styles.css?v=38" />
+    <link rel="stylesheet" href="styles.css?v=40" />
   </head>
   <body>
     <section id="authScreen" class="auth-screen" aria-label="Ingreso">
@@ -434,10 +434,10 @@
             <button class="primary-button hidden" type="button" id="onlineLoginButton">Entrar</button>
             <button class="secondary-button hidden" type="button" id="onlineLogoutButton">Salir</button>
             <button class="primary-button hidden" type="button" id="onlinePushButton">Actualizar sistema completo</button>
-            <button class="secondary-button" type="button" id="onlinePullButton">Actualizar este dispositivo</button>
+            <button class="secondary-button hidden" type="button" id="onlinePullButton">Actualizar este dispositivo</button>
             <div class="stack-item">
               <strong>Sincronizacion automatica</strong>
-              <span>Tus datos se guardan solos en la nube y se actualizan en tus dispositivos cuando usas la misma cuenta.</span>
+              <span>Tus datos se guardan en la nube y se fusionan solos en tus dispositivos cuando usas la misma cuenta.</span>
             </div>
             <div id="onlineUserStatus" class="stack-list"></div>
             <div id="onlineStatus" class="form-status" role="status"></div>
@@ -446,6 +446,6 @@
       </section>
     </main>
 
-    <script src="app.js?v=38"></script>
+    <script src="app.js?v=40"></script>
   </body>
 </html>
