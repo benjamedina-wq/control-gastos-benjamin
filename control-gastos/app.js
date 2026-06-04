@@ -194,16 +194,16 @@ elements.tabs.forEach((button) => {
 });
 
 window.addEventListener("focus", () => {
-  syncPullOnline(true);
+  syncPullOnline(true, true);
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) syncPullOnline(true);
+  if (!document.hidden) syncPullOnline(true, true);
 });
 
 window.addEventListener("online", () => {
   scheduleOnlineSync();
-  syncPullOnline(true);
+  syncPullOnline(true, true);
 });
 
 elements.unlockButton.addEventListener("click", () => {
@@ -1594,7 +1594,7 @@ function startOnlinePolling() {
   const config = state.onlineConfig || {};
   if (!config.url || !config.key || !state.onlineSession?.access_token) return;
   setTimeout(() => {
-    syncPullOnline(true);
+    syncPullOnline(true, true);
   }, 1000);
   onlinePollTimer = setInterval(() => {
     syncPullOnline(true);
@@ -1785,7 +1785,7 @@ async function syncPushOnline(isAutomatic = false) {
   }
 }
 
-async function syncPullOnline(isAutomatic = false) {
+async function syncPullOnline(isAutomatic = false, force = false) {
   const config = requireOnlineConfig(isAutomatic);
   if (!config) return;
   const session = requireOnlineSession(isAutomatic);
@@ -1808,7 +1808,7 @@ async function syncPullOnline(isAutomatic = false) {
     }
     const remoteUpdatedAt = rows[0].updated_at || "";
     const lastSync = localStorage.getItem(ONLINE_LAST_SYNC_STORAGE_KEY) || "";
-    if (isAutomatic && remoteUpdatedAt && lastSync && new Date(remoteUpdatedAt) <= new Date(lastSync)) {
+    if (!force && isAutomatic && remoteUpdatedAt && lastSync && new Date(remoteUpdatedAt) <= new Date(lastSync)) {
       return;
     }
     saveSafetyBackup("antes-de-descargar-desde-la-nube");
