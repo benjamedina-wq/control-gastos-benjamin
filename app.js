@@ -7,8 +7,9 @@ const PIN_STORAGE_KEY = "control-gastos:pin:v1";
 const ONLINE_CONFIG_STORAGE_KEY = "control-gastos:online-config:v1";
 const ONLINE_SESSION_STORAGE_KEY = "control-gastos:online-session:v1";
 const ONLINE_LAST_SYNC_STORAGE_KEY = "control-gastos:online-last-sync:v1";
+const LOCAL_LAST_CHANGE_STORAGE_KEY = "control-gastos:local-last-change:v1";
 const SAFETY_BACKUPS_STORAGE_KEY = "control-gastos:safety-backups:v1";
-const DEFAULT_SUPABASE_URL = "https://dcwfzymlyuoifufsdou.supabase.co";
+const DEFAULT_SUPABASE_URL = "https://dcwfzymlyyuoifufsdou.supabase.co";
 const DEFAULT_SUPABASE_KEY = "sb_publishable_mJPeYuUUu0R9ljycjxxdLw_QujYaj7L";
 const EXPENSE_CATEGORIES = ["Comida", "Transporte", "Servicios", "Casa", "Salud", "Ocio", "Educacion", "Otros"];
 const INCOME_CATEGORIES = ["Sueldo", "Ventas", "Transferencia", "Alquiler", "Intereses", "Otros"];
@@ -109,7 +110,9 @@ const elements = {
   reportButton: document.querySelector("#reportButton"),
   mailButton: document.querySelector("#mailButton"),
   seedButton: document.querySelector("#seedButton"),
+  scanCameraButton: document.querySelector("#scanCameraButton"),
   scanPickButton: document.querySelector("#scanPickButton"),
+  receiptCameraInput: document.querySelector("#receiptCameraInput"),
   receiptInput: document.querySelector("#receiptInput"),
   scanStatus: document.querySelector("#scanStatus"),
   receiptPreview: document.querySelector("#receiptPreview"),
@@ -167,8 +170,8 @@ elements.monthFilter.value = state.month;
 elements.dateInput.value = todayKey();
 elements.onlineUrlInput.value = state.onlineConfig.url || DEFAULT_SUPABASE_URL;
 elements.onlineKeyInput.value = state.onlineConfig.key || DEFAULT_SUPABASE_KEY;
-elements.onlineEmailInput.value = state.onlineSession.user?.email || "";
-elements.authEmailInput.value = state.onlineSession.user?.email || "";
+elements.onlineEmailInput.value = state.onlineSession?.user?.email || "";
+elements.authEmailInput.value = state.onlineSession?.user?.email || "";
 renderAuthGate();
 renderOnlineUserStatus();
 startOnlinePolling();
@@ -192,16 +195,16 @@ elements.tabs.forEach((button) => {
 });
 
 window.addEventListener("focus", () => {
-  syncPullOnline(true);
+  syncPullOnline(true, true);
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) syncPullOnline(true);
+  if (!document.hidden) syncPullOnline(true, true);
 });
 
 window.addEventListener("online", () => {
   scheduleOnlineSync();
-  syncPullOnline(true);
+  syncPullOnline(true, true);
 });
 
 elements.unlockButton.addEventListener("click", () => {
@@ -227,6 +230,10 @@ elements.startDateFilter.addEventListener("change", () => {
 elements.endDateFilter.addEventListener("change", () => {
   state.endDate = elements.endDateFilter.value;
   render();
+});
+
+elements.scanCameraButton.addEventListener("click", () => {
+  elements.receiptCameraInput.click();
 });
 
 elements.scanPickButton.addEventListener("click", () => {
@@ -440,7 +447,7 @@ elements.onlinePushButton.addEventListener("click", () => {
 });
 
 elements.onlinePullButton.addEventListener("click", () => {
-  syncPullOnline();
+  syncPullOnline(false, true);
 });
 
 elements.cancelEditButton.addEventListener("click", () => {
@@ -511,12 +518,24 @@ elements.pinClearButton.addEventListener("click", () => {
   setDataStatus("PIN quitado.", "success");
 });
 
-elements.receiptInput.addEventListener("change", async () => {
-  const file = elements.receiptInput.files[0];
+elements.receiptCameraInput.addEventListener("change", () => {
+  handleReceiptFile(elements.receiptCameraInput.files[0], elements.receiptCameraInput);
+});
+
+elements.receiptInput.addEventListener("change", () => {
+  handleReceiptFile(elements.receiptInput.files[0], elements.receiptInput);
+});
+
+async function handleReceiptFile(file, inputElement) {
   if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    setScanStatus("Por ahora el lector acepta imagenes. Elegi una foto o captura del comprobante.");
+    inputElement.value = "";
+    return;
+  }
 
   try {
-    setScanStatus("Foto seleccionada. Guardando copia local...");
+    setScanStatus("Comprobante seleccionado. Guardando copia local...");
     currentReceiptImage = await compressReceiptImage(file);
     elements.receiptPreview.src = currentReceiptImage;
     elements.receiptPreview.classList.add("visible");
@@ -544,7 +563,8 @@ elements.receiptInput.addEventListener("change", async () => {
     console.error(error);
     setScanStatus("La foto quedo guardada, pero no pude leer el texto. Carga los datos manualmente.");
   }
-});
+  inputElement.value = "";
+}
 
 elements.exportButton.addEventListener("click", () => {
   const rows = filteredExpenses();
@@ -701,24 +721,34 @@ function render() {
   elements.expenseTable.innerHTML = rows
     .map(
       (expense) => `
-        <tr>
-          <td>${formatDate(expense.date)}</td>
-          <td>${typePillMarkup(expense)}</td>
-          <td>${metaPillMarkup(accountName(expense))}</td>
-          <td>${metaPillMarkup(scopeName(expense))}</td>
-          <td><span class="category-pill">${escapeHtml(expense.category)}</span></td>
-          <td>${metaPillMarkup(paymentMethod(expense))}</td>
-          <td>${metaPillMarkup(spendMode(expense))}</td>
-          <td>${escapeHtml(expense.description)}</td>
-          <td>${receiptImageMarkup(expense.receiptImage)}</td>
-          <td class="amount-col ${movementType(expense) === "income" ? "positive" : "negative"}">${signedCurrency(expense)}</td>
-          <td>${escapeHtml(tagsText(expense) || "-")}</td>
-          <td>${expense.dueDate ? formatDate(expense.dueDate) : "-"}</td>
-          <td class="delete-col">
-            <button class="edit-button" type="button" data-edit-id="${expense.id}" title="Editar" aria-label="Editar movimiento">e</button>
-            <button class="delete-button" type="button" data-delete-id="${expense.id}" title="Borrar" aria-label="Borrar movimiento">x</button>
-          </td>
-        </tr>
+        <article class="movement-card ${movementType(expense)} ${categoryColorClass(expense.category)}">
+          <div class="movement-date">${formatDate(expense.date)}</div>
+          <div class="movement-icon" aria-hidden="true">${categoryInitial(expense.category)}</div>
+          <div class="movement-main">
+            <div class="movement-title-row">
+              <strong>${escapeHtml(expense.description)}</strong>
+              <span class="movement-amount ${movementType(expense) === "income" ? "positive" : "negative"}">${signedCurrency(expense)}</span>
+            </div>
+            <div class="movement-bar">
+              <span>${escapeHtml(expense.category)}</span>
+            </div>
+            <div class="movement-meta">
+              ${typePillMarkup(expense)}
+              ${metaPillMarkup(accountName(expense))}
+              ${metaPillMarkup(paymentMethod(expense))}
+              ${metaPillMarkup(spendMode(expense))}
+              ${tagsText(expense) ? metaPillMarkup(tagsText(expense)) : ""}
+              ${expense.dueDate ? metaPillMarkup(`Vence ${formatDate(expense.dueDate)}`) : ""}
+            </div>
+          </div>
+          <div class="movement-side">
+            ${receiptImageMarkup(expense.receiptImage)}
+            <div class="movement-actions">
+              <button class="edit-button" type="button" data-edit-id="${expense.id}" title="Editar" aria-label="Editar movimiento">e</button>
+              <button class="delete-button" type="button" data-delete-id="${expense.id}" title="Borrar" aria-label="Borrar movimiento">x</button>
+            </div>
+          </div>
+        </article>
       `
     )
     .join("");
@@ -882,6 +912,17 @@ function typePillMarkup(expense) {
 
 function metaPillMarkup(label) {
   return `<span class="meta-pill">${escapeHtml(label)}</span>`;
+}
+
+function categoryInitial(category) {
+  return escapeHtml(String(category || "?").trim().charAt(0).toUpperCase() || "?");
+}
+
+function categoryColorClass(category) {
+  const palette = ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"];
+  const text = String(category || "");
+  const index = [...text].reduce((sum, char) => sum + char.charCodeAt(0), 0) % palette.length;
+  return `movement-${palette[index]}`;
 }
 
 function signedCurrency(expense) {
@@ -1149,10 +1190,9 @@ function loadCards() {
 }
 
 function loadOnlineConfig() {
-  const saved = loadJson(ONLINE_CONFIG_STORAGE_KEY, {});
   return {
-    url: saved.url || DEFAULT_SUPABASE_URL,
-    key: saved.key || DEFAULT_SUPABASE_KEY,
+    url: DEFAULT_SUPABASE_URL,
+    key: DEFAULT_SUPABASE_KEY,
   };
 }
 
@@ -1168,9 +1208,17 @@ function loadJson(key, fallback) {
   }
 }
 
+function markLocalChange() {
+  if (applyingOnlineSnapshot) return "";
+  const value = new Date().toISOString();
+  localStorage.setItem(LOCAL_LAST_CHANGE_STORAGE_KEY, value);
+  return value;
+}
+
 function persist() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.expenses));
+    markLocalChange();
     scheduleOnlineSync();
     return true;
   } catch {
@@ -1184,6 +1232,7 @@ function persistSettings() {
   localStorage.setItem(RECURRING_STORAGE_KEY, JSON.stringify(state.recurring));
   localStorage.setItem(DEBT_STORAGE_KEY, JSON.stringify(state.debts));
   localStorage.setItem(CARD_STORAGE_KEY, JSON.stringify(state.cards));
+  markLocalChange();
   scheduleOnlineSync();
 }
 
@@ -1471,6 +1520,22 @@ function createDataSnapshot() {
   };
 }
 
+function snapshotSignature(snapshot) {
+  return JSON.stringify({
+    expenses: Array.isArray(snapshot?.expenses) ? snapshot.expenses : [],
+    budgets: snapshot?.budgets || {},
+    recurring: Array.isArray(snapshot?.recurring) ? snapshot.recurring : [],
+    debts: Array.isArray(snapshot?.debts) ? snapshot.debts : [],
+    cards: snapshot?.cards || {},
+  });
+}
+
+function isAfterDate(left, right) {
+  if (!left) return false;
+  if (!right) return true;
+  return new Date(left).getTime() > new Date(right).getTime();
+}
+
 function snapshotHasContent(snapshot) {
   if (!snapshot) return false;
   return Boolean(
@@ -1498,12 +1563,21 @@ function saveSafetyBackup(reason) {
 function restoreBackup(file) {
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       saveSafetyBackup("antes-de-restaurar-archivo");
       applyDataSnapshot(JSON.parse(reader.result));
-      setDataStatus("Copia de seguridad restaurada.", "success");
-    } catch {
+      markLocalChange();
+      localStorage.removeItem(ONLINE_LAST_SYNC_STORAGE_KEY);
+      setDataStatus("Copia restaurada en este dispositivo.", "success");
+      if (state.onlineSession?.access_token) {
+        await syncPushOnline(false);
+        setDataStatus("Copia restaurada y subida a la nube. Ahora abrila en el celular con la misma cuenta.", "success");
+      } else {
+        setDataStatus("Copia restaurada. Entra con tu cuenta para subirla a la nube.", "success");
+      }
+    } catch (error) {
+      console.error(error);
       setDataStatus("No pude restaurar ese archivo.");
     }
   };
@@ -1547,7 +1621,7 @@ function startOnlinePolling() {
   const config = state.onlineConfig || {};
   if (!config.url || !config.key || !state.onlineSession?.access_token) return;
   setTimeout(() => {
-    syncPullOnline(true);
+    syncPullOnline(true, true);
   }, 1000);
   onlinePollTimer = setInterval(() => {
     syncPullOnline(true);
@@ -1562,8 +1636,8 @@ function renderAuthGate() {
 
 function readOnlineConfigFromForm() {
   return {
-    url: (elements.onlineUrlInput.value.trim() || DEFAULT_SUPABASE_URL).replace(/\/$/, ""),
-    key: elements.onlineKeyInput.value.trim() || DEFAULT_SUPABASE_KEY,
+    url: DEFAULT_SUPABASE_URL,
+    key: DEFAULT_SUPABASE_KEY,
   };
 }
 
@@ -1584,6 +1658,14 @@ function onlineEndpoint(config) {
 
 function authEndpoint(config, path) {
   return `${config.url}/auth/v1/${path}`;
+}
+
+function authHeaders(config) {
+  return {
+    apikey: config.key,
+    Authorization: `Bearer ${config.key}`,
+    "Content-Type": "application/json",
+  };
 }
 
 function readOnlineCredentials() {
@@ -1615,11 +1697,31 @@ function saveOnlineSession(session) {
   startOnlinePolling();
 }
 
+async function refreshOnlineSession(config) {
+  const refreshToken = state.onlineSession?.refresh_token;
+  if (!refreshToken) return false;
+
+  try {
+    const response = await fetch(authEndpoint(config, "token?grant_type=refresh_token"), {
+      method: "POST",
+      headers: authHeaders(config),
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.access_token) return false;
+    saveOnlineSession(data);
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
 function renderOnlineUserStatus() {
   const email = state.onlineSession?.user?.email;
   elements.onlineUserStatus.innerHTML = email
-    ? `<div class="stack-item"><strong>Usuario conectado</strong><span>${escapeHtml(email)}</span></div>`
-    : '<div class="stack-item"><strong>Sin usuario conectado</strong><span>Registra o entra para sincronizar datos por usuario.</span></div>';
+    ? `<div class="stack-item"><strong>Cuenta activa</strong><span>${escapeHtml(email)}</span></div>`
+    : '<div class="stack-item"><strong>Sincronizacion pendiente</strong><span>Entra desde la pantalla inicial para activar la copia en la nube.</span></div>';
 }
 
 async function registerOnlineUser() {
@@ -1636,10 +1738,7 @@ async function registerOnlineUser() {
   try {
     const response = await fetch(authEndpoint(config, "signup"), {
       method: "POST",
-      headers: {
-        apikey: config.key,
-        "Content-Type": "application/json",
-      },
+      headers: authHeaders(config),
       body: JSON.stringify(credentials),
     });
     const data = await response.json();
@@ -1655,8 +1754,9 @@ async function registerOnlineUser() {
     }
   } catch (error) {
     console.error(error);
-    setAuthStatus("No pude crear la cuenta. Revisa correo o contrasena.");
-    setOnlineStatus("No pude registrar el usuario. Revisa correo, clave o configuracion de Supabase.");
+    const message = error.message || "Revisa correo, contrasena o configuracion de Supabase.";
+    setAuthStatus(`No pude crear la cuenta: ${message}`);
+    setOnlineStatus(`No pude registrar el usuario: ${message}`);
   }
 }
 
@@ -1674,10 +1774,7 @@ async function loginOnlineUser() {
   try {
     const response = await fetch(authEndpoint(config, "token?grant_type=password"), {
       method: "POST",
-      headers: {
-        apikey: config.key,
-        "Content-Type": "application/json",
-      },
+      headers: authHeaders(config),
       body: JSON.stringify(credentials),
     });
     const data = await response.json();
@@ -1688,8 +1785,9 @@ async function loginOnlineUser() {
     setOnlineStatus("Usuario conectado. Sincronizacion automatica activa.", "success");
   } catch (error) {
     console.error(error);
-    setAuthStatus("No pude entrar. Revisa correo, contrasena o confirmacion de correo.");
-    setOnlineStatus("No pude entrar. Revisa correo, contrasena o confirmacion de correo.");
+    const message = error.message || "Revisa correo, contrasena o confirmacion de correo.";
+    setAuthStatus(`No pude entrar: ${message}`);
+    setOnlineStatus(`No pude entrar: ${message}`);
   }
 }
 
@@ -1707,11 +1805,12 @@ function logoutOnlineUser() {
 async function syncPushOnline(isAutomatic = false) {
   const config = requireOnlineConfig(isAutomatic);
   if (!config) return;
-  const session = requireOnlineSession(isAutomatic);
+  let session = requireOnlineSession(isAutomatic);
   if (!session) return;
   setOnlineStatus(isAutomatic ? "Guardando en la nube..." : "Subiendo datos...");
   try {
-    const response = await fetch(onlineEndpoint(config), {
+    const pushedAt = new Date().toISOString();
+    let response = await fetch(onlineEndpoint(config), {
       method: "POST",
       headers: {
         apikey: config.key,
@@ -1721,52 +1820,101 @@ async function syncPushOnline(isAutomatic = false) {
       },
       body: JSON.stringify({
         payload: createDataSnapshot(),
-        updated_at: new Date().toISOString(),
+        updated_at: pushedAt,
       }),
     });
+    if (response.status === 401 && (await refreshOnlineSession(config))) {
+      session = state.onlineSession;
+      response = await fetch(onlineEndpoint(config), {
+        method: "POST",
+        headers: {
+          apikey: config.key,
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates",
+        },
+        body: JSON.stringify({
+          payload: createDataSnapshot(),
+          updated_at: pushedAt,
+        }),
+      });
+    }
     if (!response.ok) throw new Error(await response.text());
-    localStorage.setItem(ONLINE_LAST_SYNC_STORAGE_KEY, new Date().toISOString());
+    localStorage.setItem(ONLINE_LAST_SYNC_STORAGE_KEY, pushedAt);
+    localStorage.setItem(LOCAL_LAST_CHANGE_STORAGE_KEY, pushedAt);
     hasPendingOnlinePush = false;
     setOnlineStatus(isAutomatic ? "Cambio guardado en la nube al instante." : "Sistema completo actualizado en la nube desde esta compu.", "success");
   } catch (error) {
     console.error(error);
-    setOnlineStatus("No pude actualizar el sistema completo. Revisa la conexion, el usuario o la tabla finance_profiles.");
+    setOnlineStatus("No pude subir a la nube. Si sigue pasando, sali y volve a entrar con tu usuario.");
   }
 }
 
-async function syncPullOnline(isAutomatic = false) {
+async function syncPullOnline(isAutomatic = false, force = false) {
   const config = requireOnlineConfig(isAutomatic);
   if (!config) return;
-  const session = requireOnlineSession(isAutomatic);
+  let session = requireOnlineSession(isAutomatic);
   if (!session) return;
   if (isAutomatic && hasPendingOnlinePush) return;
   if (!isAutomatic) setOnlineStatus("Descargando datos...");
   try {
     const url = `${config.url}/rest/v1/finance_profiles?select=payload,updated_at`;
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       headers: {
         apikey: config.key,
         Authorization: `Bearer ${session.access_token}`,
       },
     });
+    if (response.status === 401 && (await refreshOnlineSession(config))) {
+      session = state.onlineSession;
+      response = await fetch(url, {
+        headers: {
+          apikey: config.key,
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+    }
     if (!response.ok) throw new Error(await response.text());
     const rows = await response.json();
     if (!rows.length || !rows[0].payload) {
+      if (snapshotHasContent(createDataSnapshot())) {
+        await syncPushOnline(true);
+        if (!isAutomatic) setOnlineStatus("La nube estaba vacia. Subi los datos de este dispositivo.", "success");
+        return;
+      }
       if (!isAutomatic) setOnlineStatus("No hay copia en la nube para este usuario.");
       return;
     }
     const remoteUpdatedAt = rows[0].updated_at || "";
     const lastSync = localStorage.getItem(ONLINE_LAST_SYNC_STORAGE_KEY) || "";
-    if (isAutomatic && remoteUpdatedAt && lastSync && new Date(remoteUpdatedAt) <= new Date(lastSync)) {
+    if (!force && isAutomatic && remoteUpdatedAt && lastSync && new Date(remoteUpdatedAt) <= new Date(lastSync)) {
       return;
     }
+    const localSnapshot = createDataSnapshot();
+    const remoteSnapshot = rows[0].payload;
+    const localChangedAt = localStorage.getItem(LOCAL_LAST_CHANGE_STORAGE_KEY) || "";
+    const localHasPendingChanges = snapshotHasContent(localSnapshot) && isAfterDate(localChangedAt, lastSync);
+    const remoteHasNewerChanges = isAfterDate(remoteUpdatedAt, lastSync);
+    if (snapshotSignature(localSnapshot) === snapshotSignature(remoteSnapshot)) {
+      if (remoteUpdatedAt) localStorage.setItem(ONLINE_LAST_SYNC_STORAGE_KEY, remoteUpdatedAt);
+      return;
+    }
+
+    if (localHasPendingChanges && (!remoteHasNewerChanges || isAfterDate(localChangedAt, remoteUpdatedAt))) {
+      await syncPushOnline(true);
+      if (!isAutomatic) setOnlineStatus("La nube fue actualizada con el ultimo cambio de este dispositivo.", "success");
+      return;
+    }
+
+    if (!remoteHasNewerChanges && !force) return;
+
     saveSafetyBackup("antes-de-descargar-desde-la-nube");
-    applyDataSnapshot(rows[0].payload);
+    applyDataSnapshot(remoteSnapshot);
     if (remoteUpdatedAt) localStorage.setItem(ONLINE_LAST_SYNC_STORAGE_KEY, remoteUpdatedAt);
     setOnlineStatus(isAutomatic ? `Cambios de la nube recibidos: ${new Date().toLocaleTimeString("es-AR")}.` : `Sistema completo traido a este dispositivo. Ultima copia: ${remoteUpdatedAt ? new Date(remoteUpdatedAt).toLocaleString("es-AR") : "-"}.`, "success");
   } catch (error) {
     console.error(error);
-    if (!isAutomatic) setOnlineStatus("No pude descargar. Revisa la conexion, el usuario o la tabla finance_profiles.");
+    if (!isAutomatic) setOnlineStatus("No pude descargar. Sali y volve a entrar con el mismo usuario, o revisa la conexion.");
   }
 }
 
@@ -1813,7 +1961,7 @@ function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
 
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch((error) => {
+    navigator.serviceWorker.register("/sw.js").catch((error) => {
       console.warn("No se pudo activar el modo instalable.", error);
     });
   });
